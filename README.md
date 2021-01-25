@@ -3,15 +3,13 @@ BLE Configurator Example
 
 ![Sending config value](./images/Sending%20Setting.jpg)
 
--> *Setting config value over BLE from browser* <-
+*Setting config value over BLE from browser*
 
 This repo demonstrates how to connect to an Artemis or ESP32 and send and receive a configuration value such as baud rate. 
 
 All BLE transactions are defined to be a series of bytes. If the Artemis transmits a value the browser will receive an array of bytes, little endian. The browser must have preexisting knowledge of the size of each configuration setting (1, 2, 4bytes, etc) and reconstruct accordingly.
 
-To play, load either the Artemis or ESP32 sketch onto a given device. You should be able to see an 'OpenLog' device when scanning from your phone or computer. Next, open a web browser (Chome and Edge have been tested). 
-
-
+To play, load either the Artemis or ESP32 sketch onto a given device. You should be able to see an 'OpenLog' device when scanning from your phone or computer. Next, open *led_demo* in a web browser (Chome and Edge have been tested). 
 
 Repository Contents
 -------------------
