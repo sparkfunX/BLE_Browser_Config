@@ -1,0 +1,867 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+        integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"
+        crossorigin="anonymous">
+
+    <!-- Custom CSS -->
+    <style>
+        body {
+            color: #3c464d;
+            background-color: #e3dccd;
+        }
+
+        div.navbar div.rounded {
+            padding: 2px;
+            background-color: red;
+            border-radius: .2rem;
+        }
+
+        div#alert-container {
+            position: fixed;
+            top: 80px;
+            width: 70%;
+            margin-left: 15%;
+            z-index: 10;
+        }
+
+        div#alert-container div.alert {
+            width: 100%;
+        }
+
+        div.jumbotron {
+            position: relative;
+            border-radius: .5rem;
+        }
+
+        div.jumbotron:after {
+            content: '';
+            position: fixed;
+            top: 295px;
+            left: 62%;
+            width: 0;
+            height: 0;
+            border: 42px solid transparent;
+            border-left-color: #f8f9fa;
+            border-right: 0;
+            margin-top: -42px;
+            margin-right: -42px;
+        }
+
+        img.ola-feature-img {
+            position: fixed;
+            top: 195px;
+            max-height: 200px;
+            right: 18%;
+        }
+
+        button.connect-button,
+        button.connecting-button,
+        button.disconnect-button,
+        button.led-toggle-button,
+        button.led-countdown-button,
+        button.int-button,
+        button.float-button,
+        button.string-button,
+        button.bool-button {
+            background-color: #e0311d;
+            color: #f8f9fa;
+
+        }
+
+        button.connecting-button,
+        button.disconnect-button {
+            display: none;
+        }
+
+        div.fixed-bottom {
+            pointer-events: none;
+        }
+
+        div.arduino-header {
+            width: 100%;
+            background-color: #e3dccd;
+            border-top-left-radius: 5px;
+            border-top-right-radius: 5px;
+        }
+
+        img.arduino-logo {
+            color: #f8f9fa;
+            max-width: 30px;
+        }
+
+        button#copy-arduino-code-button {
+            background-color: #e0311d;
+            color: #f8f9fa;
+        }
+
+        pre.arduino-code {
+            max-height: 225px;
+            overflow: scroll;
+            border: 1px solid #e3dccd;
+            border-bottom: 25px solid #e3dccd;
+            border-bottom-left-radius: 5px;
+            border-bottom-right-radius: 5px;
+        }
+
+        textarea.text-area-no-show {
+            opacity: 0;
+            position: absolute;
+            left: -1000px;
+        }
+
+        a.download-bin-link {
+            color: #e0311d;
+        }
+
+        i.fa-refresh {
+            color: #e0311d;
+            opacity: 0;
+        }
+
+        i.fa-spin {
+            opacity: 1;
+        }
+
+        i.bulb-on {
+            color: #e0311d;
+        }
+
+        p#incoming-data-from-serial {
+            font-style: italic;
+        }
+    </style>
+
+    <title>OpenLog Artemis</title>
+</head>
+
+<body>
+
+    <!-- Alert Container will "float" above everything near the top of the screen -->
+    <div id="alert-container"></div>
+
+    <!-- Top Main Navbar -->
+    <nav class="navbar navbar-expand-lg fixed-top navbar-dark bg-dark">
+        <a class="navbar-brand font-italic pt-2" href="#">
+            <img class="mr-2" src="./assets/images/artemis_dark_logo_red_bg_padding.png" width="35" height="35"
+                alt="OpenLog Artemis">
+            OpenLog Artemis
+        </a>
+    </nav>
+
+    <!-- Content Container -->
+    <div class="container" style="margin-top: 100px;">
+        <div class="row">
+            <div class="col-12 col-md-7 offset-md-1">
+                <div class="jumbotron bg-light">
+                    <h4><strong>Howdy!</strong></h4>
+                    <p class="lead">Ready to configure your <em>OpenLog Artemis</em>? Utilizing this simple interface,
+                        you can quickly and easily connect to your OLA via Bluetooth Low Energy. From there, you can
+                        update settings and monitor output. Let's give it a try!</p>
+                    <hr class="my-4">
+
+                    <div class="row">
+                        <div class="col-12">
+                            <p><strong>1. Copy the following onto your OLA Device via Arduino</strong></p>
+                            <div class="arduino-header p-2 clearfix">
+                                <button id="copy-arduino-code-button" class="btn btn-sm float-right">Copy Code</button>
+                            </div>
+                            <pre id="arduino-code" class="arduino-code small p-4">
+#include "ArduinoBLE.h"
+
+const byte LED_TO_TOGGLE = 19;
+
+BLEService olaLEDService("9991");
+
+// toggle led stuff
+BLEBooleanCharacteristic olaLEDChar("9992", BLERead | BLENotify | BLEWrite);
+BLEDescriptor olaLEDDescriptor("9992", "OLA LED service");
+
+// led countdown
+BLEStringCharacteristic olaCountdownLEDChar("9993", BLERead | BLENotify | BLEWrite, 32);
+BLEDescriptor olaCountdownLEDDescriptor("9993", "OLA LED Countdown service");
+
+// int
+BLEUnsignedIntCharacteristic olaIntValueChar("9994", BLERead | BLENotify | BLEWrite);
+BLEDescriptor olaIntValueDescriptor("9994", "OLA Int Value");
+
+// float
+BLEFloatCharacteristic olaFloatValueChar("9995", BLERead | BLENotify | BLEWrite);
+BLEDescriptor olaFloatValueDescriptor("9995", "OLA Float Value");
+
+// string
+BLEStringCharacteristic olaStringValueChar("9996", BLERead | BLENotify | BLEWrite, 32);
+BLEDescriptor olaStringValueDescriptor("9996", "OLA Float Value");
+
+// bool
+BLEBooleanCharacteristic olaBoolValueChar("9997", BLERead | BLENotify | BLEWrite);
+BLEDescriptor olaBoolValueDescriptor("9997", "OLA Bool Value");
+
+// serial to browser
+BLECharCharacteristic olaSerialValueChar("9998", BLERead | BLENotify | BLEWrite);
+BLEDescriptor olaSerialValueDescriptor("9998", "OLA Data from Serial");
+int incomingByte = 0; // for incoming serial data
+
+void setup() {
+
+    // start up serial port
+    Serial.begin(9600);
+    while ( ! Serial);
+
+    // led to display when connected
+    pinMode(LED_BUILTIN, OUTPUT);
+
+    // start BLE
+    if ( ! BLE.begin())
+    {
+        Serial.println("starting BLE failed!");
+        while(1);
+    }
+
+    // name the device
+    BLE.setLocalName("OpenLog Artemis LED Demo - SparkFun");
+    BLE.setAdvertisedService(olaLEDService);
+
+    // setup LED toggle character
+    olaLEDChar.addDescriptor(olaLEDDescriptor);
+    olaLEDService.addCharacteristic(olaLEDChar);
+    olaLEDChar.setValue(1);
+
+    // setup countdown LED character
+    olaCountdownLEDChar.addDescriptor(olaCountdownLEDDescriptor);
+    olaLEDService.addCharacteristic(olaCountdownLEDChar);
+    String timerValue = "2020-11-15T00:00:00";
+    olaCountdownLEDChar.setValue(timerValue);
+    
+    // setup int char
+    olaIntValueChar.addDescriptor(olaIntValueDescriptor);
+    olaLEDService.addCharacteristic(olaIntValueChar);
+    olaIntValueChar.setValue(4);
+
+    // setup float char
+    olaFloatValueChar.addDescriptor(olaFloatValueDescriptor);
+    olaLEDService.addCharacteristic(olaFloatValueChar);
+    olaFloatValueChar.setValue(4.4);
+
+    // setup string char
+    olaStringValueChar.addDescriptor(olaStringValueDescriptor);
+    olaLEDService.addCharacteristic(olaStringValueChar);
+    String stringValue = "Default String";
+    olaStringValueChar.setValue(stringValue);
+
+    // setup bool char
+    olaBoolValueChar.addDescriptor(olaBoolValueDescriptor);
+    olaLEDService.addCharacteristic(olaBoolValueChar);
+    olaBoolValueChar.setValue(1);
+
+    // setup serial char
+    olaSerialValueChar.addDescriptor(olaSerialValueDescriptor);
+    olaLEDService.addCharacteristic(olaSerialValueChar);
+    olaSerialValueChar.setValue(1);
+
+    // add the LED service to the BLE device
+    BLE.addService(olaLEDService);
+
+    // broadcast BLE connection
+    BLE.advertise();
+
+    Serial.println(F("OLA BLE ready for connections!"));
+}
+
+void loop()
+{
+    BLEDevice central = BLE.central();
+
+    // we got a connection!
+    if (central)
+    {
+        Serial.print("Connected to central: ");
+        Serial.println(central.address());
+        digitalWrite(LED_BUILTIN, HIGH);
+
+        Serial.println(F("OLA Ready for Serial Input!"));
+        Serial.println(F("Enter any value to send via BLE!"));
+
+        while (central.connected()) {
+
+            if (Serial.available() > 0) {
+                // read the incoming byte:
+                incomingByte = Serial.read();
+            
+                // say what you got:
+                Serial.print("Sending: ");
+                Serial.println(incomingByte);
+                olaSerialValueChar.writeValue(incomingByte);
+                
+            }
+
+            // listen for when LED toggle char is written to
+            if (olaLEDChar.written()) {
+                
+                Serial.println("Toggle LED Request");
+                Serial.println(olaLEDChar.value());
+                if (olaLEDChar.value()) {
+                    digitalWrite(LED_TO_TOGGLE, HIGH);     
+                } else {
+                    digitalWrite(LED_TO_TOGGLE, LOW);
+                }
+            }
+
+            // listen for when LED timer char is written to
+            if (olaCountdownLEDChar.written()) {
+                Serial.println("Countdown LED Request");
+                Serial.println(olaCountdownLEDChar.value());
+            }
+
+            if (olaIntValueChar.written()) {
+                Serial.println("Value writted to Int characteristic:");
+                Serial.println(olaIntValueChar.value());
+            }
+
+            if (olaFloatValueChar.written()) {
+                Serial.println("Value writted to Float characteristic:");
+                Serial.println(olaFloatValueChar.value());
+            }
+
+            if (olaStringValueChar.written()) {
+                Serial.println("Value writted to String characteristic:");
+                Serial.println(olaStringValueChar.value());
+            }
+
+            if (olaBoolValueChar.written()) {
+                Serial.println("Value writted to Boolean characteristic:");
+                Serial.println(olaBoolValueChar.value());
+            }
+            
+            delay(200);
+
+        }
+    }
+
+    digitalWrite(LED_BUILTIN, LOW);
+    Serial.print("Disconnected from central: ");
+    Serial.println(central.address());
+}
+
+                                </pre>
+                            <p class="smaller">...or download the bin file <a class="download-bin-link"
+                                    href="./assets/bins/countdown_led_ble.ino.bin" target="_blank">here</a></p>
+                        </div>
+
+                    </div>
+                    <hr class="my-4">
+                    <div class="row">
+                        <div class="col-12">
+                            <p><strong>2. Click the Button Below and Select "OpenLog Artemis LED Demo - SparkFun" from
+                                    the list</strong></p>
+                            <button id="connect-button" class="btn connect-button mb-4" href="#" role="button">Connect
+                                to OLA via BLE</button>
+                            <button id="connecting-button" class="btn connecting-button mb-4" disabled href="#"
+                                role="button">
+                                Connecting to OLA...
+                            </button>
+                            <i class="fa fa-refresh connecting-spinner float-right"></i>
+                            <button id="disconnect-button" class="btn disconnect-button mb-4" href="#"
+                                role="button">Disconnect</button>
+                        </div>
+                    </div>
+                    <!-- <hr class="my-4">
+                    <div class="row">
+                        <div class="col-12">
+                            <p><strong>3. Click Button to Toggle LED</strong></p>
+                            <div class="custom-control custom-switch float-left pt-2">
+                                <input type="checkbox" class="custom-control-input led-toggle-switch"
+                                    id="led-toggle-switch" />
+                                <label class="custom-control-label" for="led-toggle-switch">Toggle LED</label>
+                            </div>
+                            <p class="float-right">
+                                <i id="led-toggle-loaded-spinner" class="fa fa-refresh"></i>
+                                <i id="led-toggle-bulb" class="fa fa-lightbulb-o"></i>
+                            </p>
+                        </div>
+                    </div>
+                    <hr class="my-4">
+                    <div class="row">
+                        <div class="col-12">
+                            <p><strong>4. Set a Timer to Turn off LED</strong></p>
+                            <div class="input-group mb-4">
+                                <input type="datetime-local" disabled id="countdown-time" class="form-control" />
+                                <div class="input-group-append">
+                                    <span class="input-group-text">Time</span>
+                                </div>
+                            </div>
+
+                            <button disabled class="btn led-countdown-button mb-4" href="#" role="button">Set Event
+                                Time</button>
+                            <p class="float-right pt-2">
+                                <i id="timer-loaded-spinner" class="fa fa-refresh"></i>
+                                <span id="current-timer-value">&nbsp;</span>
+                            </p>
+                        </div>
+                    </div> -->
+                    <hr class="my-4">
+                    <div class="row">
+                        <div class="col-12">
+                            <p><strong>5. Send an Int</strong></p>
+                            <div class="input-group mb-4">
+                                <input disabled id="int-input" class="form-control" placeholder="5" />
+                                <div class="input-group-append">
+                                    <span class="input-group-text">Integer</span>
+                                </div>
+                            </div>
+
+                            <button disabled class="btn int-button mb-4" href="#" role="button">Send</button>
+                            <p class="float-right pt-2">
+                                <i id="int-loaded-spinner" class="fa fa-refresh"></i>
+                                <span id="current-int-value">&nbsp;</span>
+                            </p>
+                        </div>
+                    </div>
+                    <!-- <hr class="my-4">
+                    <div class="row">
+                        <div class="col-12">
+                            <p><strong>6. Send a Float</strong></p>
+                            <div class="input-group mb-4">
+                                <input disabled id="float-input" class="form-control" placeholder="4.2" />
+                                <div class="input-group-append">
+                                    <span class="input-group-text">Float</span>
+                                </div>
+                            </div>
+
+                            <button disabled class="btn float-button mb-4" href="#" role="button">Send</button>
+                            <p class="float-right pt-2">
+                                <i id="float-loaded-spinner" class="fa fa-refresh"></i>
+                                <span id="current-float-value">&nbsp;</span>
+                            </p>
+                        </div>
+                    </div>
+                    <hr class="my-4">
+                    <div class="row">
+                        <div class="col-12">
+                            <p><strong>7. Send a String </strong></p>
+                            <div class="input-group mb-4">
+                                <input disabled id="string-input" class="form-control" maxlength="20"
+                                    placeholder="A String" />
+                                <div class="input-group-append">
+                                    <span class="input-group-text">String</span>
+                                </div>
+                            </div>
+
+                            <button disabled class="btn string-button mb-4" href="#" role="button">Send</button>
+                            <p class="float-right pt-2">
+                                <i id="string-loaded-spinner" class="fa fa-refresh"></i>
+                                <span id="current-string-value">&nbsp;</span>
+                            </p>
+                        </div>
+                    </div> -->
+                    <!-- <hr class="my-4">
+                    <div class="row">
+                        <div class="col-12">
+                            <p><strong>8. Send a Boolean</strong></p>
+                            <div class="input-group mb-4">
+                                <p class="float-right">
+                                    <i id="boolean-loaded-spinner" class="fa fa-refresh"></i>
+                                    <span id="current-boolean-value">&nbsp;</span>
+                                </p>
+                                <div class="custom-control custom-switch">
+                                    <input type="checkbox" class="custom-control-input toggle-switch"
+                                        id="toggle-switch" />
+                                    <label class="custom-control-label" for="toggle-switch">Toggle Example</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <hr class="my-4">
+                    <div class="row">
+                        <div class="col-12">
+                            <p><strong>9. Incoming Serial Data</strong></p>
+                            <p class="small">Open a serial port to Baud 9600 and enter a character</p>
+                            <p id="incoming-data-from-serial"></p>
+                        </div>
+                    </div> -->
+                </div>
+            </div>
+            <div class="col-12 col-md-3 text-center">
+                <img class="mr-2 ola-feature-img" src="./assets/images/ola.png?v=1.0" alt="OpenLog Artemis">
+            </div>
+        </div>
+    </div>
+
+    <div class="row fixed-bottom pb-4">
+        <div class="col-md-2 offset-md-10">
+            <img class="mx-auto d-block" width="100px" src="./assets/images/sparkfun-logo-full-color.png" />
+        </div>
+    </div>
+
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
+        integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
+        crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+        integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
+        crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+        integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+        crossorigin="anonymous"></script>
+
+    <!-- Custom JS -->
+    <script type="text/javascript">
+
+        let bluetoothDevice;
+        let ledToggleCharacteristic;
+        let ledCountdownCharacteristic;
+        let intCharacteristic;
+        let floatCharacteristic;
+        let stringCharacteristic;
+        let boolCharacteristic;
+        let serialCharacteristic;
+        let incomingDataFromSerial = '';
+
+        // buffer to string
+        function ab2str(buf) {
+            return String.fromCharCode.apply(null, new Uint8Array(buf));
+        }
+
+        // functions for converting strings
+        function convertStringToUTF8ByteArray(str) {
+            let binaryArray = new Uint8Array(str.length);
+            Array.prototype.forEach.call(binaryArray, function (el, idx, arr) { arr[idx] = str.charCodeAt(idx) })
+            return binaryArray
+        }
+
+        function convertStringToUTF16ByteArray(str) {
+            let binaryArray = new Uint8Array(str.length);
+            Array.prototype.forEach.call(binaryArray, function (el, idx, arr) { arr[idx] = str.charCodeAt(idx) })
+            return binaryArray
+        }
+
+        // Convert a string to an int by inverting the endian-ness
+        function convertCharactersticToInt32(array) {
+            console.log(array);
+            var count = 0;
+            // assuming the array has at least four elements
+            for (var i = array.length - 1; i >= 0; i--) {
+                console.log(array[i]);
+                count = count << 8;
+                count = count + array[i];
+            }
+            return count
+        }
+
+        // function to encode float
+        function encodeFloat(num) {
+            let d = new DataView(new ArrayBuffer(2));
+            d.setInt16(0, num * 100, false);
+            return new Uint8Array(d.buffer);
+        }
+
+        // alert types: primary, secondary, succes, danger, warning, info, light, dark
+        function addAlert(alertType, alertText) {
+            const alert = document.createElement('div');
+            alert.classList = `alert alert-${alertType} mb-2`;
+            alert.textContent = alertText;
+            const alertContainer = document.getElementById('alert-container');
+            alertContainer.append(alert);
+            setTimeout(() => {
+                alert.remove();
+            }, 4000);
+        }
+
+        // add serial input to html
+        function serialNotification(event) {
+            incomingDataFromSerial += ab2str(event.target.value.buffer);
+            $('#incoming-data-from-serial').html(`${incomingDataFromSerial}`);
+        }
+
+        // read various values
+        function readLEDToggleValue() {
+            return ledToggleCharacteristic.readValue().then(value => {
+                $('.led-toggle-switch').removeAttr('disabled');
+                $('#led-toggle-loaded-spinner').hide();
+                $('#led-toggle-switch').prop('checked', value.getInt8(0));
+                if (value.getInt8(0)) {
+                    $('#led-toggle-bulb').addClass('bulb-on');
+                } else {
+                    $('#led-toggle-bulb').removeClass('bulb-on');
+                }
+            });
+        }
+
+        function readLEDTimerValue() {
+            ledCountdownCharacteristic.readValue().then(value => {
+                $('.led-countdown-button').removeAttr('disabled');
+                $('#countdown-time').removeAttr('disabled');
+                $('#timer-loaded-spinner').hide();
+                $('#countdown-time').val(ab2str(value.buffer));
+                $('#current-timer-value').html(`<p>${ab2str(value.buffer)}</p>`);
+            });
+        }
+
+        function readBaudValue() {
+            intCharacteristic.readValue().then(value => {
+                $('#int-input').removeAttr('disabled');
+                $('.int-button').removeAttr('disabled');
+                $('#int-loaded-spinner').hide();
+                $('#int-input').val(value.getInt32(0, true)); //Little endian - All BLE responses seem to be little endian
+                $('#current-int-value').html(`${value.getInt32(0, true)}`);
+            });
+        }
+
+        function readFloatValue() {
+            floatCharacteristic.readValue().then(value => {
+                $('#float-input').removeAttr('disabled');
+                $('.float-button').removeAttr('disabled');
+                $('#float-loaded-spinner').hide();
+                $('#float-input').val(value.getFloat32(0, true));
+                $('#current-float-value').html(value.getFloat32(0, true));
+            });
+        }
+
+        function readStringValue() {
+            stringCharacteristic.readValue().then(value => {
+                $('#string-input').removeAttr('disabled');
+                $('.string-button').removeAttr('disabled');
+                $('#string-loaded-spinner').hide();
+                $('#string-input').val(ab2str(value.buffer));
+                $('#current-string-value').html(ab2str(value.buffer));
+            });
+        }
+
+        function readBoolValue() {
+            boolCharacteristic.readValue().then(value => {
+                $('.toggle-switch').removeAttr('disabled');
+                $('#boolean-loaded-spinner').hide();
+                $('#toggle-swtich').prop('checked', value.getInt8(0));
+            });
+        }
+
+        // subscribe to the serial input and pass input to the serial notification function
+        function subscribeToSerialChar() {
+            serialCharacteristic.startNotifications().then(result => {
+                serialCharacteristic.addEventListener('characteristicvaluechanged', event => serialNotification(event));
+            });
+        }
+
+        // reset all the spinners
+        function resetLoadingStates() {
+            $('#connect-button').show();
+            $('.connecting-spinner').removeClass('fa-spin').hide();
+            $('#connecting-button').removeClass('fa-spin').hide();
+            $('#disconnect-button').removeClass('fa-spin').hide();
+            $('#led-toggle-loaded-spinner').removeClass('fa-spin').hide();
+            $('#timer-loaded-spinner').removeClass('fa-spin').hide();
+            $('#int-loaded-spinner').removeClass('fa-spin').hide();
+            $('#float-loaded-spinner').removeClass('fa-spin').hide();
+            $('#string-loaded-spinner').removeClass('fa-spin').hide();
+            $('#boolean-loaded-spinner').removeClass('fa-spin').hide();
+        }
+
+        function copyArduinoCode() {
+            const copyText = document.getElementById('arduino-code').textContent;
+            const textArea = document.createElement('textarea');
+            textArea.classList.add('text-area-no-show');
+            textArea.textContent = copyText;
+            document.body.append(textArea);
+            textArea.select();
+            textArea.setSelectionRange(0, 99999); // for mobile
+            document.execCommand('copy');
+            textArea.remove();
+            addAlert('success', 'Arduino Code Copied!');
+        }
+
+        // start the BLE connection
+        var requestBlueToothDevices = function () {
+
+            $('#connect-button').hide();
+            $('#connecting-button').show();
+            $('.connecting-spinner').show().addClass('fa-spin');
+
+            const serviceUUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
+            const charLEDUUID = "beb5483e-36e1-4688-b7f5-ea07361b26a9";
+            const charBaudUUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
+
+            const options = {
+                optionalServices: [serviceUUID]
+            };
+            options.acceptAllDevices = true;
+
+            // console.log("gelt");
+            // const array = [0x01, 0x0A, 0x00, 0x00];
+
+            // console.log(convertCharactersticToIn32(array));
+            // console.log("Done");
+            // return 1;
+
+            return navigator.bluetooth.requestDevice(options).then(device => {
+                bluetoothDevice = device;
+                return device.gatt.connect();
+            }).then(gattServer => {
+
+                return gattServer.getPrimaryService(serviceUUID);
+
+            }).then(primaryService => {
+
+                $('#connecting-button').removeClass('fa-spin').hide();
+                $('.connecting-spinner').removeClass('fa-spin').hide();
+                $('#disconnect-button').show();
+
+                // LED Toggle
+                // $('#led-toggle-loaded-spinner').show().addClass('fa-spin');
+                // primaryService.getCharacteristic(charLEDUUID).then(characteristic => {
+                //     ledToggleCharacteristic = characteristic;
+                //     readLEDToggleValue();
+                // });
+
+                // LED Countdown
+                // $('#timer-loaded-spinner').show().addClass('fa-spin');
+                // primaryService.getCharacteristic(0x9993).then(characteristic => {
+                //     ledCountdownCharacteristic = characteristic;
+                //     readLEDTimerValue();
+                // });
+
+                // Int Value
+                $('#int-loaded-spinner').show().addClass('fa-spin');
+                primaryService.getCharacteristic(charBaudUUID).then(characteristic => {
+                    intCharacteristic = characteristic;
+                    readBaudValue();
+                });
+
+                // Float Value
+                // $('#float-loaded-spinner').show().addClass('fa-spin');
+                // primaryService.getCharacteristic(0x9995).then(characteristic => {
+                //     floatCharacteristic = characteristic;
+                //     readFloatValue();
+                // });
+
+                // String Value
+                // $('#string-loaded-spinner').show().addClass('fa-spin');
+                // primaryService.getCharacteristic(0x9996).then(characteristic => {
+                //     stringCharacteristic = characteristic;
+                //     readStringValue();
+                // });
+
+                // Toggle Switch
+                // $('#boolean-loaded-spinner').show().addClass('fa-spin');
+                // primaryService.getCharacteristic(0x9997).then(characteristic => {
+                //     boolCharacteristic = characteristic;
+                //     readBoolValue();
+                // });
+
+                // Serial Write
+                // primaryService.getCharacteristic(0x9998).then(characteristic => {
+                //     serialCharacteristic = characteristic;
+                //     subscribeToSerialChar();
+                // });
+
+            }).catch(error => {
+                resetLoadingStates();
+                addAlert('danger', 'There was a problem connecting. Please try again.');
+            });
+        }
+
+
+        // page is loaded and ready for event binding
+        $(document).ready(function () {
+
+            // set event binding for copying Arduino code when button clicked
+            $('#copy-arduino-code-button').on('click', () => {
+                copyArduinoCode();
+            });
+
+            // event binding for the connection button
+            $('.connect-button').on('click', () => {
+
+                // user selects the BLE device to connect to
+                requestBlueToothDevices().then(result => {
+
+                    // bind events for all the buttons on the page
+                    // $('.led-toggle-switch').on('click', () => {
+                    //     $('#led-toggle-loaded-spinner').show().addClass('fa-spin');
+                    //     let value = ($('#led-toggle-switch').prop('checked')) ? "1" : "0";
+                    //     ledToggleCharacteristic.writeValue(Uint8Array.from(value)).then(result => {
+                    //         addAlert('success', 'LED Toggle Command sent to OLA!');
+                    //         readLEDToggleValue();
+                    //     });
+                    // });
+
+                    // $('.led-countdown-button').on('click', () => {
+                    //     $('#timer-loaded-spinner').show().addClass('fa-spin');
+                    //     let secondsValue = $('#countdown-time').val();
+                    //     ledCountdownCharacteristic.writeValue(convertStringToUTF16ByteArray(secondsValue)).then(result => {
+                    //         addAlert('success', 'LED Countdown Started!');
+                    //         readLEDTimerValue();
+                    //     });
+                    // });
+
+                    $('.int-button').on('click', () => {
+                        $('#int-loaded-spinner').show().addClass('fa-spin');
+                        let value = $('#int-input').val();
+
+                        var buffer = new ArrayBuffer(16);
+                        var dataView = new DataView(buffer);
+                        dataView.setInt32(0, value, true);
+
+                        intCharacteristic.writeValue(dataView).then(result => {
+                            addAlert('success', 'Int value sent!');
+                            readBaudValue();
+                        });
+                    });
+
+                    // $('.float-button').on('click', () => {
+                    //     $('#float-loaded-spinner').show().addClass('fa-spin');
+                    //     let value = $('#float-input').val();
+                    //     floatCharacteristic.writeValue(encodeFloat(parseFloat(value))).then(result => {
+                    //         addAlert('success', 'Float value sent!');
+                    //         readFloatValue();
+                    //     });
+                    // });
+
+                    // $('.string-button').on('click', () => {
+                    //     $('#string-loaded-spinner').show().addClass('fa-spin');
+                    //     let value = $('#string-input').val();
+                    //     stringCharacteristic.writeValue(convertStringToUTF8ByteArray(value)).then(result => {
+                    //         addAlert('success', 'String value sent!');
+                    //         readStringValue();
+                    //     });
+                    // });
+
+                    // $('.toggle-switch').on('click', () => {
+                    //     $('#boolean-loaded-spinner').show().addClass('fa-spin');
+                    //     let value = ($('#toggle-swtich').prop('checked')) ? "1" : "0";
+                    //     boolCharacteristic.writeValue(Uint8Array.from(value)).then(result => {
+                    //         addAlert('success', 'Toggle Switch clicked!');
+                    //         readBoolValue();
+                    //     });
+
+                    // });
+
+                });
+
+            });
+
+            // disconnect from the BLE device
+            $('#disconnect-button').on('click', () => {
+                if (bluetoothDevice.gatt.connected) {
+                    bluetoothDevice.gatt.disconnect();
+                }
+                addAlert('success', 'Diconnected from OLA!');
+            });
+        });
+    </script>
+
+</body>
+
+</html>
