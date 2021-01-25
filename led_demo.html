@@ -690,22 +690,17 @@ void loop()
             $('.connecting-spinner').show().addClass('fa-spin');
 
             const serviceUUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
-            const charLEDUUID = "beb5483e-36e1-4688-b7f5-ea07361b26a9";
             const charBaudUUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
+            const charLEDUUID = "beb5483e-36e1-4688-b7f5-ea07361b26a9";
 
-            const options = {
-                optionalServices: [serviceUUID]
-            };
-            options.acceptAllDevices = true;
-
-            // console.log("gelt");
-            // const array = [0x01, 0x0A, 0x00, 0x00];
-
-            // console.log(convertCharactersticToIn32(array));
-            // console.log("Done");
-            // return 1;
-
-            return navigator.bluetooth.requestDevice(options).then(device => {
+            return navigator.bluetooth.requestDevice({
+                filters: [
+                    {
+                        name: 'OpenLog',
+                        services: [serviceUUID]
+                    }
+                ]
+            }).then(device => {
                 bluetoothDevice = device;
                 return device.gatt.connect();
             }).then(gattServer => {
