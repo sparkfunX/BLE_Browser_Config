@@ -82,6 +82,26 @@
 
         }
 
+        div.input-group-append.button-container button {
+            display: none;
+        }
+            div.input-group-append.button-container.ready button#int-send-button {
+                display: block;
+            }
+            div.input-group-append.button-container.sending button#int-sending-button {
+                display: block;
+                background-color: #6c757d;
+            }
+            div.input-group-append.button-container.done button#int-done-button {
+                display: block;
+                background-color: #28a745;
+            }
+            div.input-group-append.button-container.resend button#int-resend-button {
+                display: block;
+                background-color: #ffc107;
+            }
+
+
         button.connecting-button,
         button.disconnect-button {
             display: none;
@@ -128,12 +148,7 @@
         }
 
         i.fa-refresh {
-            color: #e0311d;
-            opacity: 0;
-        }
-
-        i.fa-spin {
-            opacity: 1;
+            color: #f8f9fa;
         }
 
         i.bulb-on {
@@ -418,16 +433,22 @@ void loop()
                             <p><strong>5. Send an Int</strong></p>
                             <div class="input-group mb-4">
                                 <input disabled id="int-input" class="form-control" placeholder="5" />
-                                <div class="input-group-append">
-                                    <span class="input-group-text">Integer</span>
+                                <div class="input-group-append button-container ready">
+                                    <button id="int-send-button" disabled class="btn int-button" href="#" role="button">Send</button>
+                                    <button id="int-resend-button" disabled class="btn int-button" href="#" role="button">
+                                        <i id="int-loaded-spinner" class="fa fa-refresh mr-1"></i>
+                                        Resend
+                                    </button>
+                                    <button id="int-sending-button" disabled class="btn int-button" href="#" role="button">
+                                        <i id="int-loaded-spinner" class="fa fa-spin fa-refresh mr-1"></i>
+                                        Sending
+                                    </button>
+                                    <button id="int-done-button" disabled class="btn int-button" href="#" role="button">
+                                        <i class="fa fa-check mr-1"></i>
+                                        Done
+                                    </button>
                                 </div>
                             </div>
-
-                            <button disabled class="btn int-button mb-4" href="#" role="button">Send</button>
-                            <p class="float-right pt-2">
-                                <i id="int-loaded-spinner" class="fa fa-refresh"></i>
-                                <span id="current-int-value">&nbsp;</span>
-                            </p>
                         </div>
                     </div>
                     <!-- <hr class="my-4">
@@ -611,13 +632,15 @@ void loop()
         }
 
         function readBaudValue() {
-            intCharacteristic.readValue().then(value => {
-                $('#int-input').removeAttr('disabled');
-                $('.int-button').removeAttr('disabled');
-                $('#int-loaded-spinner').hide();
-                $('#int-input').val(value.getInt32(0, true)); //Little endian - All BLE responses seem to be little endian
-                $('#current-int-value').html(`${value.getInt32(0, true)}`);
+            return new Promise((resolve, reject) => {
+                intCharacteristic.readValue().then(value => {
+                    $('#int-input').removeAttr('disabled');
+                    $('.int-button').removeAttr('disabled');
+                    resolve(value.getInt32(0, true)); //Little endian - All BLE responses seem to be little endian
+                    // $('#current-int-value').html(`${value.getInt32(0, true)}`);
+                }).catch(err => reject(err));
             });
+            
         }
 
         function readFloatValue() {
@@ -728,10 +751,14 @@ void loop()
                 // });
 
                 // Int Value
-                $('#int-loaded-spinner').show().addClass('fa-spin');
                 primaryService.getCharacteristic(charBaudUUID).then(characteristic => {
                     intCharacteristic = characteristic;
-                    readBaudValue();
+                    readBaudValue().then(baudValue => {
+                        $('#int-input').val(baudValue);
+                    }).catch(err => {
+                        console.log('There was an issue reading the from the device');
+                        console.log(err);
+                    });
                 });
 
                 // Float Value
@@ -802,7 +829,10 @@ void loop()
                     // });
 
                     $('.int-button').on('click', () => {
-                        $('#int-loaded-spinner').show().addClass('fa-spin');
+                        let buttonContainer = $('.button-container');
+                        buttonContainer.removeClass('ready');
+                        buttonContainer.removeClass('resend');
+                        buttonContainer.addClass('sending');
                         let value = $('#int-input').val();
 
                         var buffer = new ArrayBuffer(16);
@@ -810,9 +840,21 @@ void loop()
                         dataView.setInt32(0, value, true);
 
                         intCharacteristic.writeValue(dataView).then(result => {
-                            addAlert('success', 'Int value sent!');
-                            readBaudValue();
+                            readBaudValue().then(baudValue => {
+                                buttonContainer.removeClass('sending');
+                                if (baudValue == value) {
+                                    buttonContainer.addClass('done');        
+                                } else {
+                                    buttonContainer.addClass('resend');
+                                }
+                            });
                         });
+                    });
+                    $('#int-input').on('keyup', event => {
+                        if ($('.button-container').hasClass('done')) {
+                            $('.button-container').removeClass('done');
+                            $('.button-container').addClass('ready');
+                        }
                     });
 
                     // $('.float-button').on('click', () => {
